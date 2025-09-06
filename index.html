@@ -56,8 +56,7 @@
                 <div class="flex items-center justify-between h-16">
                     <h1 class="text-xl sm:text-2xl font-bold text-gray-800">イケオジ会話シミュレーター</h1>
                     <div class="hidden sm:block text-right">
-                        <p class="text-sm font-medium text-gray-600">30,40代男性向け (✨AIアシスト搭載)</p>
-                        <p class="text-xs text-gray-400">相手の返信横の「✨」でAIが返信案を提案</p>
+                        <p class="text-sm font-medium text-gray-600">30,40代男性向け</p>
                     </div>
                 </div>
             </div>
@@ -101,36 +100,6 @@
     <!-- コピー成功の通知 -->
     <div id="toast" class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg opacity-0 transition-opacity duration-300">
         クリップボードにコピーしました！
-    </div>
-
-    <!-- AI Suggestions Modal -->
-    <div id="ai-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
-        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <!-- Loading State -->
-            <div id="ai-loading">
-                <h3 class="text-lg font-semibold text-gray-800 mb-2">✨ AIが返信を生成中...</h3>
-                <p class="text-gray-600 mb-4">最適な返信を考えています。少々お待ちください。</p>
-                <div class="flex justify-center items-center py-4">
-                   <svg class="animate-spin h-8 w-8 text-pink-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                </div>
-            </div>
-            <!-- Suggestions State -->
-            <div id="ai-suggestions" class="hidden">
-                 <h3 class="text-lg font-semibold text-gray-800 mb-4">✨ AIからの返信案</h3>
-                 <div id="ai-suggestions-list" class="space-y-3 max-h-60 overflow-y-auto">
-                     <!-- Suggestions will be populated here -->
-                 </div>
-            </div>
-            <!-- Error State -->
-            <div id="ai-error" class="hidden">
-                <h3 class="text-lg font-semibold text-red-600 mb-2">エラーが発生しました</h3>
-                <p class="text-gray-600">返信を生成できませんでした。時間をおいて再度お試しください。</p>
-            </div>
-             <button id="ai-modal-close" class="mt-4 w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">閉じる</button>
-        </div>
     </div>
 
 <script>
@@ -270,14 +239,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const partnerName = document.getElementById('partner-name');
     const partnerIcon = document.getElementById('chat-header').querySelector('img');
 
-    // Modal elements
-    const aiModal = document.getElementById('ai-modal');
-    const aiLoading = document.getElementById('ai-loading');
-    const aiSuggestions = document.getElementById('ai-suggestions');
-    const aiSuggestionsList = document.getElementById('ai-suggestions-list');
-    const aiError = document.getElementById('ai-error');
-    const aiModalClose = document.getElementById('ai-modal-close');
-
     // 初期アイコン設定
     partnerIcon.src = femaleIconUrl;
 
@@ -343,16 +304,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     avatar.src = femaleIconUrl;
                     avatar.alt = '相手のアイコン';
                     avatar.className = 'w-8 h-8 rounded-full object-cover flex-shrink-0';
-                    
-                    const aiButton = document.createElement('button');
-                    aiButton.innerHTML = '✨';
-                    aiButton.className = 'text-xl opacity-0 group-hover:opacity-100 transition-opacity self-center ml-1';
-                    aiButton.title = "AIで返信を考える";
-                    aiButton.onclick = () => handleAiButtonClick(example.chat, index);
 
                     messageWrapper.appendChild(avatar);
                     messageWrapper.appendChild(bubble);
-                    messageWrapper.appendChild(aiButton);
                 }
                 chatLog.appendChild(messageWrapper);
             });
@@ -382,123 +336,9 @@ document.addEventListener('DOMContentLoaded', () => {
             toast.classList.add('opacity-0');
         }, 2000);
     }
-    
-    // --- Gemini API Features ---
-
-    aiModalClose.addEventListener('click', () => aiModal.classList.add('hidden'));
-    aiModal.addEventListener('click', (e) => {
-        if (e.target === aiModal) {
-            aiModal.classList.add('hidden');
-        }
-    });
-
-    async function handleAiButtonClick(fullChat, currentIndex) {
-        aiModal.classList.remove('hidden');
-        aiLoading.classList.remove('hidden');
-        aiSuggestions.classList.add('hidden');
-        aiError.classList.add('hidden');
-        aiSuggestionsList.innerHTML = '';
-
-        const chatHistory = fullChat.slice(0, currentIndex + 1);
-        
-        try {
-            const suggestions = await getAiSuggestions(chatHistory);
-            aiSuggestionsList.innerHTML = '';
-            if (suggestions && suggestions.length > 0) {
-                suggestions.forEach(text => {
-                    const suggestionButton = document.createElement('button');
-                    suggestionButton.className = 'w-full text-left p-3 bg-gray-100 hover:bg-pink-100 rounded-lg transition-colors text-gray-800';
-                    suggestionButton.textContent = text;
-                    suggestionButton.onclick = () => {
-                        copyToClipboard(text);
-                        aiModal.classList.add('hidden');
-                    };
-                    aiSuggestionsList.appendChild(suggestionButton);
-                });
-                aiLoading.classList.add('hidden');
-                aiSuggestions.classList.remove('hidden');
-            } else {
-                throw new Error("No suggestions returned.");
-            }
-        } catch (error) {
-            console.error("AI suggestion error:", error);
-            aiLoading.classList.add('hidden');
-            aiError.classList.remove('hidden');
-        }
-    }
-
-    async function getAiSuggestions(chatHistory) {
-        const apiKey = ""; 
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-        
-        const systemPrompt = `あなたは、マッチングアプリの会話で30〜40代の男性をサポートする、気の利くAIアシスタントです。ユーザーは「イケオジ」として、年下の20代女性と会話しています。包容力、大人の余裕、そして知性を感じさせつつも、決して偉そうにならない、スマートな返信を心がけてください。
-以下の会話履歴を踏まえ、相手の女性が返信しやすく、会話がさらに盛り上がるような、自然で魅力的な返信文を長すぎない端的かつ優しめの文章で3つ提案してください。
-返信文は、それぞれ異なる角度からの提案にしてください。絵文字は使わず、親しみやすさを出してください。`;
-
-        let formattedHistory = "これまでの会話履歴:\n";
-        chatHistory.forEach(msg => {
-            const speaker = msg.speaker === 'you' ? '男性' : '女性';
-            formattedHistory += `${speaker}: ${msg.text}\n`;
-        });
-        
-        const userQuery = `${formattedHistory}\n上記の会話について、男性からの返信を3パターン提案してください。`;
-
-        const payload = {
-            contents: [{ parts: [{ text: userQuery }] }],
-            systemInstruction: {
-                parts: [{ text: systemPrompt }]
-            },
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: "OBJECT",
-                    properties: {
-                        suggestions: {
-                            type: "ARRAY",
-                            items: { type: "STRING" }
-                        }
-                    },
-                    required: ["suggestions"]
-                }
-            }
-        };
-
-        let lastError = null;
-        for (let i = 0; i < 3; i++) { // Exponential backoff
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    throw new Error(`API request failed with status ${response.status}`);
-                }
-                const result = await response.json();
-                const candidate = result.candidates?.[0];
-                if (candidate && candidate.content?.parts?.[0]?.text) {
-                    const parsedJson = JSON.parse(candidate.content.parts[0].text);
-                    return parsedJson.suggestions;
-                } else {
-                    throw new Error("Invalid response structure from API");
-                }
-            } catch (error) {
-                lastError = error;
-                if (i < 2) {
-                    await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
-                }
-            }
-        }
-        throw lastError;
-    }
 });
 </script>
 
 </body>
 </html>
-
-
-
-
 
